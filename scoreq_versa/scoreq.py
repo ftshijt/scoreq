@@ -14,7 +14,7 @@ class Scoreq():
     no-reference (NR) and reference-based (FR/NMR) modes. It supports both natural and synthetic speech
     data domains.
     """
-    def __init__(self, device=None, data_domain='natural', mode='nr'):
+    def __init__(self, device=None, data_domain='natural', mode='nr', cache_dir="./scoreq_pt-models"):
         """
         Initializes the Scoreq object.
 
@@ -43,13 +43,13 @@ class Scoreq():
         
         # *** LOAD MODEL ***
         # *** Pytorch models directory ****
-        if not os.path.isdir('./pt-models'):
+        if not os.path.isdir(cache_dir):
             print('Creating pt-models directory')
-            os.makedirs('./pt-models')
+            os.makedirs(cache_dir)
 
         # Download wav2vec 2.0
         url_w2v = "https://dl.fbaipublicfiles.com/fairseq/wav2vec/wav2vec_small.pt"
-        CHECKPOINT_PATH = './pt-models/wav2vec_small.pt'
+        CHECKPOINT_PATH = '{}/wav2vec_small.pt'.format(cache_dir)
         if not os.path.isfile(CHECKPOINT_PATH):
             print('Downloading wav2vec 2.0')
             urlretrieve(url_w2v, CHECKPOINT_PATH)
@@ -76,18 +76,18 @@ class Scoreq():
         # Load weights
         if data_domain == 'natural':
             if mode == 'nr':
-                MODEL_PATH = './pt-models/adapt_nr_telephone.pt'
+                MODEL_PATH = '{}/adapt_nr_telephone.pt'.format(cache_dir)
                 url_scoreq = 'https://zenodo.org/records/13860326/files/adapt_nr_telephone.pt'
                 if not os.path.isfile(MODEL_PATH):
-                    print('Downloading PyTorch weights from Zenodo')
+                    print('Downloading PyTorch weights from Zenodo. It takes time, please be patient...')
                     print('SCOREQ | Mode: No-Reference | Data: Natural speech')
                     urlretrieve(url_scoreq, MODEL_PATH)
                     print('Download completed')
             elif mode == 'ref':
-                MODEL_PATH = './pt-models/fixed_nmr_telephone.pt'
+                MODEL_PATH = '{}/fixed_nmr_telephone.pt'.format(cache_dir)
                 url_scoreq = 'https://zenodo.org/records/13860326/files/fixed_nmr_telephone.pt'
                 if not os.path.isfile(MODEL_PATH):
-                    print('Downloading PyTorch weights from Zenodo')
+                    print('Downloading PyTorch weights from Zenodo. It takes time, please be patient...')
                     print('SCOREQ | Mode: Full-Reference/NMR | Data: Natural speech')
                     urlretrieve(url_scoreq, MODEL_PATH)
                     print('Download completed')
@@ -95,18 +95,18 @@ class Scoreq():
                 raise Exception('Mode must be either "nr" for no-reference or "ref" for full-reference and non-matching reference.')
         elif data_domain == 'synthetic':
             if mode == 'nr':
-                MODEL_PATH = './pt-models/adapt_nr_synthetic.pt'
+                MODEL_PATH = '{}/adapt_nr_synthetic.pt'.format(cache_dir)
                 url_scoreq = 'https://zenodo.org/records/13860326/files/adapt_nr_synthetic.pt'
                 if not os.path.isfile(MODEL_PATH):
-                    print('Downloading PyTorch weights from Zenodo')
+                    print('Downloading PyTorch weights from Zenodo. It takes time, please be patient...')
                     print('SCOREQ | Mode: No-Reference | Data: Synthetic speech')
                     urlretrieve(url_scoreq, MODEL_PATH)
                     print('Download completed')
             elif mode == 'ref':
-                MODEL_PATH = './pt-models/fixed_nmr_synthetic.pt'
+                MODEL_PATH = '{}/fixed_nmr_synthetic.pt'.format(cache_dir)
                 url_scoreq = 'https://zenodo.org/records/13860326/files/fixed_nmr_synthetic.pt'
                 if not os.path.isfile(MODEL_PATH):
-                    print('Downloading PyTorch weights from Zenodo')
+                    print('Downloading PyTorch weights from Zenodo. It takes time, please be patient...')
                     print('SCOREQ | Mode: Full-reference/NMR | Data: Synthetic speech')
                     urlretrieve(url_scoreq, MODEL_PATH)
                     print('Download completed')
@@ -146,12 +146,12 @@ class Scoreq():
         # No-Reference (NR) mode
         if self.mode == 'nr':
             pred = np.round(self.nr_scoreq(test_path), 4)
-            print(f'SCOREQ | No-Reference Mode | Domain {self.data_domain} | {test_path}: {pred}')
+            # print(f'SCOREQ | No-Reference Mode | Domain {self.data_domain} | {test_path}: {pred}')
 
         elif self.mode == 'ref':
             # Full-reference (FR) mode or Non-Matching Reference (NMR) mode depending on which reference audio is used
             pred = self.ref_scoreq(test_path, ref_path)      
-            print(f'SCOREQ | Fr/Nmr-Reference Mode | Domain {self.data_domain} | Ref-> {ref_path}, Test-> {test_path}: {pred}')
+            # print(f'SCOREQ | Fr/Nmr-Reference Mode | Domain {self.data_domain} | Ref-> {ref_path}, Test-> {test_path}: {pred}')
         
         else:
             raise Exception('Selected mode is not valid, choose between nr and ref')
@@ -169,7 +169,7 @@ class Scoreq():
             The predicted MOS.
         """
 
-        wave = self.load_processing(test_path).to(self.DEVICE)
+        wave = self.load_processing_versa(test_path).to(self.DEVICE)
         with torch.no_grad():
             pred_mos = self.model(wave).item()
         
@@ -187,8 +187,8 @@ class Scoreq():
         Returns:
             The euclidean distance between the embeddings of the test and reference audio files.
         """
-        test_wave = self.load_processing(test_path).to(self.DEVICE)
-        ref_wave = self.load_processing(ref_path).to(self.DEVICE)
+        test_wave = self.load_processing_versa(test_path).to(self.DEVICE)
+        ref_wave = self.load_processing_versa(ref_path).to(self.DEVICE)
 
         # Get embeddings
         with torch.no_grad():
@@ -231,6 +231,30 @@ class Scoreq():
         if trim:
             if wave.shape[1] > sr*10:
                 wave = wave[:, :sr*10]
+        
+        return wave
+    
+    # Load wave file
+    def load_processing_versa(self, source_wav, target_sr=16000, trim=False):
+        """
+        Loads and preprocesses an audio numpy array.
+
+        Args:
+            source_wav: Aa numpy array containing the audio data.
+            target_sr: Target sample rate (default: 16000 Hz).
+            trim: Whether to trim the audio to 10 seconds (default: False).
+
+        Returns:
+            The preprocessed audio waveform as a PyTorch tensor.
+        """
+
+        # Load waveform
+        wave = torch.tensor(source_wav).unsqueeze(0).float()
+        
+        # Trim audio to 10 secs
+        if trim:
+            if wave.shape[1] > target_sr*10:
+                wave = wave[:, :target_sr*10]
         
         return wave
 

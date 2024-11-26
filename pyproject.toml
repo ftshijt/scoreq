@@ -23,7 +23,7 @@ classifiers = [
 ]
 
 dependencies = [
-    "fairseq >= 0.12.2",
+    "fairseq",
     "click >= 8.1.7",
 ]
 

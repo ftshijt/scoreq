@@ -1,0 +1,31 @@
+# pyproject.toml
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build]
+exclude = ["data*", "pt-models*", ".vscode*"]
+
+[project]
+name = "scoreq_versa"  # Choose a unique name for your package
+version = "0.0.1"  # Start with a version number
+authors = [
+  { name="Alessandro Ragano", email="alessandroragano@gmail.com" },
+]
+description = "A Python package for advanced speech quality assessment using the SCOREQ model"
+readme = "README.md"  # Make sure you have a README.md file
+requires-python = ">=3.9"  # Specify the minimum Python version required
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",  # Or your preferred license
+    "Operating System :: OS Independent",
+]
+
+dependencies = [
+    "fairseq >= 0.12.2",
+    "click >= 8.1.7",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/alessandroragano/scoreq"
